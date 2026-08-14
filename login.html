@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - بطولة ببجي</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 400px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+        .logo { font-size: 64px; margin-bottom: 10px; }
+        h1 { color: #fff; font-size: 28px; margin-bottom: 5px; }
+        .subtitle { color: #888; font-size: 14px; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-group label { color: #aaa; font-size: 13px; display: block; margin-bottom: 5px; }
+        .form-group input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 15px;
+            transition: 0.3s;
+            outline: none;
+        }
+        .form-group input:focus {
+            border-color: #ff6b6b;
+            background: rgba(255,255,255,0.08);
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn:hover { transform: scale(1.02); box-shadow: 0 10px 30px rgba(255,107,107,0.3); }
+        .footer { margin-top: 20px; color: #555; font-size: 12px; }
+        .footer a { color: #ff6b6b; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🎮</div>
+        <h1>بطولة ببجي موبايل</h1>
+        <p class="subtitle">سجل الدخول للمشاركة واربح الجوائز!</p>
+        <form method="POST">
+            <div class="form-group">
+                <label>📧 البريد الإلكتروني</label>
+                <input type="email" name="email" placeholder="example@email.com" required>
+            </div>
+            <div class="form-group">
+                <label>🔑 كلمة المرور</label>
+                <input type="password" name="password" placeholder="••••••••" required>
+            </div>
+            <button class="btn" type="submit">🚀 دخول / إنشاء حساب</button>
+        </form>
+        <div class="footer">
+            بالدخول أنت توافق على <a href="#">شروط البطولة</a>
+        </div>
+    </div>
+</body>
+</html>

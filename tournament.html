@@ -30,8 +30,11 @@
             align-items: center;
             border-bottom: 2px solid #ff6b6b;
         }
-        .header .brand { font-size: 24px; font-weight: bold; color: #ff6b6b; }
-        .header .brand span { color: #fff; }
+        .header .brand img {
+            height: 40px;
+            width: auto;
+            vertical-align: middle;
+        }
         .header .menu a {
             color: #aaa;
             text-decoration: none;
@@ -65,6 +68,11 @@
             text-align: center;
         }
         .prize-item .icon { font-size: 32px; }
+        .prize-item .icon img {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+        }
         .prize-item .value { font-size: 22px; font-weight: bold; color: #ff6b6b; }
         .prize-item .label { color: #888; font-size: 12px; }
 
@@ -183,8 +191,8 @@
 <body>
 
     <div class="header">
-        
-        <img src="https://i.postimg.cc/wB2f4yCL/IMG-20260815-WA0003.jpg" alt="BGTournament" style="height: 40px; width: auto; vertical-align: middle;">
+        <div class="brand">
+            <img src="https://i.postimg.cc/wB2f4yCL/IMG-20260815-WA0003.jpg" alt="BGTournament">
         </div>
         <div class="menu">
             <a href="#">الرئيسية</a>
@@ -219,21 +227,28 @@
                 <div class="label">جهاز لوحي</div>
             </div>
             <div class="prize-item">
-                <div class="icon">💎</div>
+                <div class="icon">
+                    <img src="https://i.postimg.cc/25Ly2hbQ/IMG-20260815-WA0001.jpg" alt="شدات">
+                </div>
                 <div class="value">1000</div>
                 <div class="label">شدات</div>
             </div>
             <div class="prize-item">
-                <div class="icon">💎</div>
+                <div class="icon">
+                    <img src="https://i.postimg.cc/25Ly2hbQ/IMG-20260815-WA0001.jpg" alt="شدات">
+                </div>
                 <div class="value">660</div>
                 <div class="label">شدات</div>
             </div>
             <div class="prize-item">
-                <div class="icon">💎</div>
+                <div class="icon">
+                    <img src="https://i.postimg.cc/25Ly2hbQ/IMG-20260815-WA0001.jpg" alt="شدات">
+                </div>
                 <div class="value">325</div>
                 <div class="label">شدات</div>
             </div>
         </div>
+    </div>
 
     <div class="features">
         <div class="feature-item" onclick="alert('🚀 قريباً!')">

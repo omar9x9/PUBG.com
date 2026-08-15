@@ -247,6 +247,13 @@ app_bot.add_handler(CommandHandler("stats", stats))
 def run_bot():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+    # حذف أي Webhook قديم لتجنب تعارض Polling
+    try:
+        bot = Bot(token=TELEGRAM_TOKEN)
+        bot.delete_webhook()
+        print("[✓] تم حذف Webhook القديم")
+    except Exception as e:
+        print(f"[!] فشل حذف Webhook: {e}")
     app_bot.run_polling(close_loop=False, stop_signals=False)
 
 # ========== المدخل الرئيسي ==========

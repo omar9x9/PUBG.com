@@ -260,8 +260,9 @@ def run_bot():
     # 2. تعيين الـ loop الجديد كـ loop نشط في هذا الثريد
     asyncio.set_event_loop(loop)
     
-    # 3. تشغيل البوت الآن بدون مشاكل
-    app_bot.run_polling(close_loop=False)
+    # 3. تشغيل البوت مع إيقاف إشارات النظام لمنع الكراش
+    app_bot.run_polling(close_loop=False, stop_signals=False)
+
 
 # ========== المدخل الرئيسي ==========
 if __name__ == "__main__":

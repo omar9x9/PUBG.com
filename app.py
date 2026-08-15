@@ -19,8 +19,7 @@ if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN not set")
 
 # ========== Flask ==========
-app = Flask(__name__)
-
+app = Flask (_name, template_folder='.')
 # ========== قاعدة البيانات ==========
 DB_PATH = "data.db"
 

